@@ -24,10 +24,10 @@ var lastinfo = {};
 var isM = false, mw = 0, mh=0;
 var ws, cpick, ranges;
 var cfg = {
-	theme:{base:"dark", bg:{url:""}, alpha:{bg:0.6,tab:0.8}, color:{bg:""}},
-	comp :{colors:{picker: true, rgb: false, quick: true, hex: false},
+    theme:{base:"dark", bg:{url:"https://images.unsplash.com/photo-1538370965046-79c0d6907d47?fm=jpg&q=60&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8Z2FsYXh5fGVufDB8fDB8fHww"}, alpha:{bg:0.6,tab:0.8}, color:{bg:""}},
+    comp :{colors:{picker: true, rgb: false, quick: true, hex: false},
           labels:true, pcmbot:false, pid:true, seglen:false, segpwr:false, segexp:true, 
-          css:true, hdays:false, fxdef:true, fxdef2:false} //WLEDMM segexp true as default, fxdef2 added
+          css:true, hdays:false, fxdef:true, fxdef2:false}
 };
 var hol = [
 	[0,11,24,4,"https://aircoookie.github.io/xmas.png"], // christmas
