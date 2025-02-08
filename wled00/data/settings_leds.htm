@@ -188,9 +188,35 @@
 				if (s[i].name.substring(0,2)=="LT") {
 					var n = s[i].name.substring(2);
 					var t = parseInt(s[i].value,10);
-					gId("p0d"+n).innerHTML = (t >= 100 && t < 110) ? "Chain Length:" : (t>=80 && t<96) ? "IP address:" : (t > 49) ? "Data GPIO:" : (t > 41) ? "GPIOs:" : "GPIO:";
-					gId("p1d"+n).innerHTML = (t> 49 && t<64) ? "Clk GPIO:" : "";
+					gId("p0d"+n).innerHTML = (t == 98) ? "SPI MOSI (23):" : 
+                         (t >= 100 && t < 110) ? "Chain Length:" : 
+                         (t >= 80 && t < 96) ? "IP address:" : 
+                         (t > 49) ? "Data GPIO:" : 
+                         (t > 41) ? "GPIOs:" : "GPIO:";
+
+					gId("p1d"+n).innerHTML = (t == 98) ? "SPI CLK (18):" :
+                         (t > 49 && t < 64) ? "Clk GPIO:" : "";
+
+					gId("p2d"+n).innerHTML = (t == 98) ? "SPI CS (5):" : "";
+
 					var LK = d.getElementsByName("L1"+n)[0]; // clock pin
+					if (t == 98) {
+						// Set and lock SPI pin values
+						d.getElementsByName("L0"+n)[0].value = "23";  // MOSI
+						d.getElementsByName("L0"+n)[0].readOnly = true;
+						
+						if (LK) {
+							LK.value = "18";  // CLK
+							LK.readOnly = true;
+						}
+						
+						var CS = d.getElementsByName("L2"+n)[0];
+						if (CS) {
+							CS.value = "5";   // CS
+							CS.readOnly = true;
+							CS.style.display = "inline";
+						}
+					}
 
 					memu += getMem(t, n); // calc memory
 
@@ -419,6 +445,7 @@ ${i+1}:
 <option value="44">PWM RGBW</option>\
 <option value="45">PWM RGB+CCT</option>\
 <!--option value="46">PWM RGB+DCCT</option-->'}
+<option value="98">SPI LED Coprocessor</option>
 <option value="80">DDP RGB (network)</option>
 <!--option value="81">E1.31 RGB (network)</option-->
 <option value="82">Art-Net RGB (network)</option>

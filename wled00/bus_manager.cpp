@@ -1216,6 +1216,128 @@ void BusHub75Matrix::deallocatePins() {
 #endif
 // ***************************************************************************
 
+//------MOD BY SPACE CADETS------
+// SPI LED Coprocessor implementation using ESP32 hardware VSPI bus
+
+BusSpiLEDCoprocessor::BusSpiLEDCoprocessor(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWhite) {
+  _valid = false;
+  USER_PRINTF("Initializing SPI LED Coprocessor with type: %d\n", bc.type);
+
+  // Hardware VSPI pins for ESP32
+  const uint8_t VSPI_MOSI = 23;
+  const uint8_t VSPI_SCK = 18;
+  const uint8_t VSPI_CS = 5;
+
+  // Create pins array with correct type
+  managed_pin_type spiPins[3];
+  spiPins[0].pin = VSPI_MOSI;
+  spiPins[1].pin = VSPI_SCK;
+  spiPins[2].pin = VSPI_CS;
+  
+  USER_PRINTLN("Attempting to allocate SPI pins");
+  if (!pinManager.allocateMultiplePins(spiPins, 3, PinOwner::HW_SPI)) {
+    USER_PRINTLN("Failed to allocate SPI pins");
+    cleanup();
+    return;
+  }
+
+  _pins[0] = VSPI_MOSI;
+  _pins[1] = VSPI_SCK;
+  _pins[2] = VSPI_CS;
+
+  _len = bc.count;
+  USER_PRINTF("Allocating buffer for %d LEDs\n", _len);
+  _data = (byte*)malloc(_len * 3);
+  
+  if (_data == nullptr) {
+    USER_PRINTLN("Failed to allocate LED data buffer");
+    cleanup();
+    return;
+  }
+
+  USER_PRINTLN("Initializing SPI bus");
+  SPI.begin(VSPI_SCK, -1, VSPI_MOSI, VSPI_CS);
+  SPI.beginTransaction(SPISettings(8000000, MSBFIRST, SPI_MODE0));
+
+  pinMode(VSPI_CS, OUTPUT);
+  digitalWrite(VSPI_CS, HIGH);
+
+  _valid = true;
+  USER_PRINTF("SPI LED Coprocessor initialized successfully [MOSI:%d CLK:%d CS:%d]\n", 
+              VSPI_MOSI, VSPI_SCK, VSPI_CS);
+}
+
+void BusSpiLEDCoprocessor::cleanup() {
+  if (_data) {
+    free(_data);
+    _data = nullptr;
+  }
+  
+  // Release allocated pins using HW_SPI owner type
+  for (uint8_t i = 0; i < 3; i++) {
+    if (_pins[i] != 255) {
+      pinManager.deallocatePin(_pins[i], PinOwner::HW_SPI);  
+      _pins[i] = 255;
+    }
+  }
+  
+  _valid = false;
+  SPI.end();
+}
+
+bool BusSpiLEDCoprocessor::canShow() {
+  return _valid;
+}
+
+void BusSpiLEDCoprocessor::show() {
+  if (!_valid || !_data) {
+    USER_PRINTLN("Show called but bus is invalid or data is null");
+    return;
+  }
+
+  //USER_PRINTLN("Sending frame start");
+  digitalWrite(_pins[2], LOW);
+  SPI.transfer(0xFF);
+  
+  //USER_PRINTF("Sending %d bytes of LED data\n", _len * 3);
+  for (uint16_t i = 0; i < _len * 3; i++) {
+    SPI.transfer(_data[i]);
+  }
+  
+  //USER_PRINTLN("Sending frame end");
+  SPI.transfer(0xFE);
+  digitalWrite(_pins[2], HIGH);
+}
+
+void BusSpiLEDCoprocessor::setPixelColor(uint16_t pix, uint32_t c) {
+  if (!_valid || pix >= _len || !_data) return;
+  
+  // Store RGB values in data buffer
+  uint16_t offset = pix * 3;
+  _data[offset] = R(c);     // Red 
+  _data[offset+1] = G(c);   // Green
+  _data[offset+2] = B(c);   // Blue
+}
+
+uint32_t BusSpiLEDCoprocessor::getPixelColor(uint16_t pix) const {
+  if (!_valid || pix >= _len || !_data) return 0;
+  
+  // Retrieve RGB values from data buffer
+  uint16_t offset = pix * 3;
+  return RGBW32(_data[offset], _data[offset+1], _data[offset+2], 0);
+}
+
+uint8_t BusSpiLEDCoprocessor::getPins(uint8_t* pinArray) const {
+  pinArray[0] = _pins[0];  // MOSI
+  pinArray[1] = _pins[1];  // SCK
+  pinArray[2] = _pins[2];  // CS
+  return 3;
+}
+
+//------END MOD BY SPACE CADETS------
+
+
+
 //utility to get the approx. memory usage of a given BusConfig
 uint32_t BusManager::memUsage(BusConfig &bc) {
   uint8_t type = bc.type;
@@ -1262,7 +1384,14 @@ int BusManager::add(BusConfig &bc) {
     busses[numBusses] = new BusDigital(bc, numBusses, colorOrderMap);
   } else if (bc.type == TYPE_ONOFF) {
     busses[numBusses] = new BusOnOff(bc);
-  } else {
+  } 
+  //mod by space cadets
+  else if (bc.type == TYPE_SPI_LED_COPROCESSOR) {
+    if (numBusses >= WLED_MAX_BUSSES) return -1;
+    busses[numBusses] = new BusSpiLEDCoprocessor(bc);
+  } 
+  //mod by space cadets
+  else {
     busses[numBusses] = new BusPwm(bc);
   }
   return numBusses++;

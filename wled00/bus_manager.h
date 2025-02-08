@@ -12,6 +12,8 @@
 
 #include "const.h"
 
+
+
 #if !defined(FASTLED_VERSION) // only pull in FastLED if we don't have it yet
   #define FASTLED_INTERNAL
   #include <FastLED.h>
@@ -43,6 +45,7 @@ void setBitArray(uint8_t* byteArray, size_t numBits, bool value);  // set all bi
 #define NUM_ICS_WS2812_2CH_3X(len) (((len)+1)*2/3) // 2 WS2811 ICs control 3 zones (each zone has 2 LEDs, CW and WW)
 #define IC_INDEX_WS2812_2CH_3X(i)  ((i)*2/3)
 #define WS2812_2CH_3X_SPANS_2_ICS(i) ((i)&0x01)    // every other LED zone is on two different ICs
+
 
 //temporary struct for passing bus configuration to bus
 struct BusConfig {
@@ -445,6 +448,26 @@ class BusHub75Matrix : public Bus {
 };
 #endif
 
+//--------START OF MOD BY SPACE CADETS--------
+// Bus class for SPI LED coprocessor, a separate ESP32 that is SPI connected 
+// that receives LED data and displays it. Offloads LED data processing from the main ESP32
+class BusSpiLEDCoprocessor : public Bus {
+  public:
+    BusSpiLEDCoprocessor(BusConfig &bc);
+    bool canShow() override;
+    void show() override;
+    void setPixelColor(uint16_t pix, uint32_t c) override;
+    uint32_t getPixelColor(uint16_t pix) const override;
+    uint8_t getPins(uint8_t* pinArray) const override;
+    void cleanup() override;
+
+  private:
+    uint8_t _pins[3] = {255, 255, 255};  // MOSI, SCK, CS
+    byte* _data = nullptr;
+};
+//--------END OF MOD BY SPACE CADETS--------
+
+
 class BusManager {
   public:
     BusManager() {};
@@ -509,7 +532,7 @@ class BusManager {
 
     inline uint8_t getNumVirtualBusses() const {
       int j = 0;
-      for (int i=0; i<numBusses; i++) if (busses[i]->getType() >= TYPE_NET_DDP_RGB && busses[i]->getType() < 96) j++;
+      for (int i=0; i<numBusses; i++) if (busses[i]->getType() >= TYPE_NET_DDP_RGB && busses[i]->getType() < 99) j++;
       return j;
     }
 };
