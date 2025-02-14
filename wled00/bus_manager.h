@@ -71,6 +71,7 @@ struct BusConfig {
     if ((type >= TYPE_NET_DDP_RGB) && (type < (TYPE_NET_DDP_RGB + 16))) nPins = 4;     // virtual network bus. 4 "pins" store IP address
     else if ((type > 47) && (type < 63)) nPins = 2;                                    // (data + clock / SPI) busses - two pins
     else if (IS_PWM(type)) nPins = NUM_PWM_PINS(type);                                 // PWM needs 1..5 pins
+    else if (type == TYPE_SPI_LED_COPROCESSOR) nPins = 3;                              // SPI LED coprocessor needs 3 pins for SPI
     else if (type >= TYPE_HUB75MATRIX && type <= (TYPE_HUB75MATRIX + 10)) nPins = 1;   // HUB75 does not use LED pins, but we need to preserve the "chain length" parameter
     for (uint8_t i = 0; i < min(unsigned(nPins), sizeof(pins)/sizeof(pins[0])); i++) pins[i] = ppins[i];   //softhack007 fix for potential array out-of-bounds access
   }
@@ -462,7 +463,7 @@ class BusSpiLEDCoprocessor : public Bus {
     void cleanup() override;
 
   private:
-    uint8_t _pins[3] = {255, 255, 255};  // MOSI, SCK, CS
+    uint8_t _pins[4] = {255, 255, 255, 255};  // MOSI, SCK, CS, MISO
     byte* _data = nullptr;
 };
 //--------END OF MOD BY SPACE CADETS--------
@@ -532,7 +533,11 @@ class BusManager {
 
     inline uint8_t getNumVirtualBusses() const {
       int j = 0;
-      for (int i=0; i<numBusses; i++) if (busses[i]->getType() >= TYPE_NET_DDP_RGB && busses[i]->getType() < 99) j++;
+      for (int i=0; i<numBusses; i++) {
+        uint8_t type = busses[i]->getType();
+        // Include TYPE_SPI_LED_COPROCESSOR (98) in valid types
+        if ((type >= TYPE_NET_DDP_RGB && type < 97) || type == 98) j++;
+      }
       return j;
     }
 };

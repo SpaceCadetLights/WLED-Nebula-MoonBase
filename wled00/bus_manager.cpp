@@ -1221,6 +1221,7 @@ void BusHub75Matrix::deallocatePins() {
 
 BusSpiLEDCoprocessor::BusSpiLEDCoprocessor(BusConfig &bc) : Bus(bc.type, bc.start, bc.autoWhite) {
   _valid = false;
+  //Code from here on runs 
   USER_PRINTF("Initializing SPI LED Coprocessor with type: %d\n", bc.type);
 
   // Hardware VSPI pins for ESP32
@@ -1229,7 +1230,7 @@ BusSpiLEDCoprocessor::BusSpiLEDCoprocessor(BusConfig &bc) : Bus(bc.type, bc.star
   const uint8_t VSPI_CS = 5;
 
   // Create pins array with correct type
-  managed_pin_type spiPins[3];
+  managed_pin_type spiPins[3];  // Changed to 3 since we don't need MISO
   spiPins[0].pin = VSPI_MOSI;
   spiPins[1].pin = VSPI_SCK;
   spiPins[2].pin = VSPI_CS;
@@ -1240,6 +1241,7 @@ BusSpiLEDCoprocessor::BusSpiLEDCoprocessor(BusConfig &bc) : Bus(bc.type, bc.star
     cleanup();
     return;
   }
+  USER_PRINTLN("SPI pins allocated successfully");
 
   _pins[0] = VSPI_MOSI;
   _pins[1] = VSPI_SCK;
@@ -1254,17 +1256,19 @@ BusSpiLEDCoprocessor::BusSpiLEDCoprocessor(BusConfig &bc) : Bus(bc.type, bc.star
     cleanup();
     return;
   }
+  USER_PRINTLN("LED buffer allocated successfully");
 
   USER_PRINTLN("Initializing SPI bus");
-  SPI.begin(VSPI_SCK, -1, VSPI_MOSI, VSPI_CS);
+  SPI.begin(VSPI_SCK, -1, VSPI_MOSI, VSPI_CS);  // Changed to match ESP32 SPI initialization
   SPI.beginTransaction(SPISettings(8000000, MSBFIRST, SPI_MODE0));
 
   pinMode(VSPI_CS, OUTPUT);
   digitalWrite(VSPI_CS, HIGH);
 
   _valid = true;
-  USER_PRINTF("SPI LED Coprocessor initialized successfully [MOSI:%d CLK:%d CS:%d]\n", 
+  USER_PRINTF("SPI LED Coprocessor initialized successfully [MOSI:%d SCK:%d CS:%d]\n", 
               VSPI_MOSI, VSPI_SCK, VSPI_CS);
+  USER_FLUSH();  // Add flush to ensure message is sent
 }
 
 void BusSpiLEDCoprocessor::cleanup() {
@@ -1291,7 +1295,7 @@ bool BusSpiLEDCoprocessor::canShow() {
 
 void BusSpiLEDCoprocessor::show() {
   if (!_valid || !_data) {
-    USER_PRINTLN("Show called but bus is invalid or data is null");
+    USER_PRINTF("Show called but bus is invalid (_valid=%d, _data=%p)\n", _valid, _data);
     return;
   }
 
